@@ -1,0 +1,171 @@
+.csLayout{
+  min-height: 100vh;
+  width: 100%;
+  display:flex;
+  background:#f6f7fb;
+}
+
+.csMain{
+  flex: 1;
+  min-width: 0;
+  display:flex;
+  flex-direction:column;
+}
+
+.csContent{
+  padding: 18px 22px;
+}
+
+.csHeader{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.csTitle{
+  margin: 0;
+  font-size: 22px;
+  font-weight: 900;
+  color:#111827;
+}
+
+.csSub{
+  margin: 6px 0 0;
+  color:#6b7280;
+  font-size: 14px;
+}
+
+.csBtn{
+  border: none;
+  background:#111827;
+  color:#fff;
+  font-weight: 800;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor:pointer;
+  height: 42px;
+}
+
+.csBtn:hover{
+  filter: brightness(1.05);
+}
+
+.csCard{
+  background:#fff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 16px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.06);
+  padding: 14px;
+}
+
+.csCardTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom: 10px;
+}
+
+.csCardTitle{
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  color:#111827;
+}
+
+.csSmall{
+  font-size: 12px;
+  font-weight: 750;
+  color:#6b7280;
+}
+
+.csTableWrap{
+  width: 100%;
+  overflow:auto;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.csTable{
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+  background:#fff;
+}
+
+.csTable thead th{
+  text-align:left;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color:#6b7280;
+  padding: 12px;
+  background: #fbfbfd;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.csTable tbody td{
+  padding: 12px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  color:#374151;
+  font-size: 14px;
+}
+
+.csTable tbody tr:hover{
+  background:#f9fafb;
+}
+
+.csMono{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 800;
+  color:#111827;
+}
+
+.csStrong{
+  font-weight: 850;
+  color:#111827;
+}
+
+.csBadge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 850;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+.csBadge.active{
+  background:#ecfdf5;
+  color:#065f46;
+  border-color: rgba(6,95,70,0.2);
+}
+
+.csBadge.inactive{
+  background:#fef2f2;
+  color:#991b1b;
+  border-color: rgba(153,27,27,0.2);
+}
+
+.csLinkBtn{
+  border: none;
+  background: transparent;
+  font-weight: 900;
+  cursor:pointer;
+  color:#111827;
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
+.csLinkBtn:hover{
+  background:#f3f4f6;
+}
+
+.csNote{
+  margin-top: 10px;
+  color:#6b7280;
+  font-size: 12px;
+}

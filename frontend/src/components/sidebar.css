@@ -1,0 +1,79 @@
+.sb{
+  width:240px;
+  background:#ffffff;
+  border-right:1px solid rgba(0,0,0,0.06);
+  padding:18px 14px;
+  display:flex;
+  flex-direction:column;
+}
+
+.sbBrand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:6px 8px 16px;
+}
+
+.sbLogo{
+  width:38px;
+  height:38px;
+  border-radius:12px;
+  background:#eef2ff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.sbName{
+  font-weight:900;
+  color:#111827;
+  font-size:14px;
+}
+
+.sbNav{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:10px;
+}
+
+.sbItem{
+  text-decoration:none;
+  color:#374151;
+  padding:10px 12px;
+  border-radius:12px;
+  font-weight:700;
+  background:transparent;
+  transition:all 0.15s ease;
+}
+
+.sbItem:hover{
+  background:#f3f4f6;
+  transform:translateX(3px);
+}
+
+.sbItem.active{
+  background:#111827;
+  color:#fff;
+  box-shadow:0 6px 14px rgba(0,0,0,0.12);
+}
+
+.sbBottom{
+  margin-top:auto;
+  padding-top:14px;
+}
+
+.sbLogout{
+  width:100%;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid rgba(0,0,0,0.12);
+  background:#fff;
+  font-weight:800;
+  cursor:pointer;
+  transition:all 0.15s ease;
+}
+
+.sbLogout:hover{
+  background:#f3f4f6;
+}

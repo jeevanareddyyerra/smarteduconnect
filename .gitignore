@@ -1,0 +1,20 @@
+# frontend
+frontend/node_modules/
+frontend/dist/
+
+# backend
+backend/build/
+backend/out/
+backend/.classpath
+backend/.project
+backend/.settings/
+backend/bin/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# logs
+*.log

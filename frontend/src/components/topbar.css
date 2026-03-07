@@ -1,0 +1,82 @@
+.tb{
+  height:64px;
+  padding:0 18px;
+  background:#ffffff;
+  border-bottom:1px solid rgba(0,0,0,0.06);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.tbSearch{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  background:#f3f4f6;
+  padding:10px 14px;
+  border-radius:14px;
+  width:min(420px,100%);
+}
+
+.tbSearchIcon{
+  opacity:0.6;
+}
+
+.tbInput{
+  border:none;
+  outline:none;
+  background:transparent;
+  width:100%;
+  font-size:14px;
+}
+
+.tbRight{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.tbIconBtn{
+  border:none;
+  background:#f3f4f6;
+  border-radius:12px;
+  padding:10px 12px;
+  cursor:pointer;
+  transition:all 0.15s ease;
+}
+
+.tbIconBtn:hover{
+  background:#e5e7eb;
+}
+
+.tbUser{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:6px 10px;
+  border-radius:14px;
+  background:#f9fafb;
+  border:1px solid rgba(0,0,0,0.06);
+}
+
+.tbAvatar{
+  width:36px;
+  height:36px;
+  border-radius:14px;
+  background:#e5e7eb;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+}
+
+.tbUserName{
+  font-weight:800;
+  color:#111827;
+  font-size:13px;
+}
+
+.tbUserRole{
+  font-size:11px;
+  color:#6b7280;
+}
