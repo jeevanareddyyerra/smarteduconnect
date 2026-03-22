@@ -7,7 +7,6 @@ export default function StudentLogin() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -24,43 +23,29 @@ export default function StudentLogin() {
 
     try {
       const formData = new URLSearchParams();
-      formData.append("email", email);
+      formData.append("username", email);
       formData.append("password", password);
+      formData.append("role", "student");
 
-      const response = await fetch(
-        `${window.location.origin}/SmartEdu1/api/student/login`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: formData.toString(),
-        }
-      );
+      const response = await fetch("/jsp/loginApi.jsp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
 
-      const xmlText = await response.text();
-      const parser = new DOMParser();
-      const xml = parser.parseFromString(xmlText, "text/xml");
+      const data = await response.json();
+      console.log("LOGIN RESPONSE:", data);
 
-      const parseError = xml.getElementsByTagName("parsererror")[0];
-      if (parseError) {
-        setErrorMsg("Server returned an invalid response. Check Tomcat logs.");
-        return;
-      }
-
-      const status = xml.getElementsByTagName("status")[0]?.textContent?.trim();
-
-      if (status === "success") {
-        const name =
-          xml.getElementsByTagName("name")[0]?.textContent?.trim() || "Student";
-
-        localStorage.setItem("role", "student");
-        localStorage.setItem("userName", name);
+      if (data.ok) {
+        localStorage.setItem("role", data.role || "student");
+        localStorage.setItem("userName", data.display_name || "Student");
+        localStorage.setItem("linked_id", data.linked_id || "");
 
         navigate("/student/dashboard");
       } else {
-        const message =
-          xml.getElementsByTagName("message")[0]?.textContent?.trim() ||
-          "Login failed";
-        setErrorMsg(message);
+        setErrorMsg(data.message || "Login failed");
       }
     } catch (error) {
       console.error(error);

@@ -1,37 +1,128 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar.jsx";
 import Topbar from "../components/Topbar.jsx";
 import StatCard from "../components/StatCard.jsx";
+import { getJson } from "../api";
 import "./dashboard.css";
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const userName = localStorage.getItem("userName") || "Admin";
 
-  const activities = [
-    { title: "New Student Registrations", meta: "24 added this week" },
-    { title: "Faculty Accounts Updated", meta: "5 updated today" },
-    { title: "Course Allocation", meta: "Semester course mapping active" },
-  ];
+  const [data, setData] = useState({
+    students: 0,
+    faculty: 0,
+    courses: 0,
+    reports: 0,
+    assignments: 0,
+    attendance: 0,
+    avg_marks: 0,
+  });
 
-  const reports = [
-    {
-      title: "Attendance Report Ready",
-      text: "Department-wise attendance report generated",
-      time: "Today",
-    },
-    {
-      title: "Academic Summary",
-      text: "Semester performance summary available",
-      time: "Yesterday",
-    },
-  ];
+  const [message, setMessage] = useState("");
+  const [searchText, setSearchText] = useState("");
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  async function loadDashboard() {
+    setMessage("");
+
+    try {
+      const response = await getJson("/jsp/getAdminDashboard.jsp");
+
+      if (response.ok) {
+        setData(response);
+      } else {
+        setMessage(response.message || "Failed to load dashboard");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage("Failed to load dashboard");
+    }
+  }
+
+  function handleSearchSubmit() {
+    const q = searchText.trim().toLowerCase();
+
+    if (!q) {
+      setMessage("Please type something to search.");
+      return;
+    }
+
+    if (
+      q.includes("student") ||
+      q.includes("students") ||
+      q.includes("roll") ||
+      q.includes("learner")
+    ) {
+      navigate("/admin/students");
+      return;
+    }
+
+    if (
+      q.includes("faculty") ||
+      q.includes("staff") ||
+      q.includes("teacher") ||
+      q.includes("professor")
+    ) {
+      navigate("/admin/faculty");
+      return;
+    }
+
+    if (
+      q.includes("course") ||
+      q.includes("courses") ||
+      q.includes("subject") ||
+      q.includes("allocation")
+    ) {
+      navigate("/admin/courses");
+      return;
+    }
+
+    if (
+      q.includes("report") ||
+      q.includes("reports") ||
+      q.includes("attendance") ||
+      q.includes("marks") ||
+      q.includes("analytics")
+    ) {
+      navigate("/admin/reports");
+      return;
+    }
+
+    setMessage(`No result found for "${searchText}"`);
+  }
+
+  const alerts = useMemo(
+    () => [
+      {
+        title: "Assignments Published",
+        text: `${data.assignments} assignments available in the portal`,
+      },
+      {
+        title: "Attendance Records",
+        text: `${data.attendance} attendance rows available`,
+      },
+    ],
+    [data.assignments, data.attendance]
+  );
 
   return (
     <div className="dbLayout">
       <Sidebar active="Dashboard" role="admin" />
 
       <div className="dbMain">
-        <Topbar userName={userName} role="Admin" />
+        <Topbar
+          userName={userName}
+          role="Admin"
+          searchValue={searchText}
+          onSearchChange={setSearchText}
+          onSearchSubmit={handleSearchSubmit}
+          searchPlaceholder="Search students, faculty, courses, reports..."
+        />
 
         <div className="dbContent">
           <div className="dbHeader">
@@ -40,38 +131,62 @@ export default function AdminDashboard() {
               <div className="dbSub">
                 Here’s an overview of the institution portal
               </div>
+              {message ? <div style={{ marginTop: 10 }}>{message}</div> : null}
             </div>
           </div>
 
           <div className="dbGridTop">
-            <StatCard
-              label="Total Students"
-              value="1248"
-              badge="Active"
-              sub="Users"
-              progress={90}
-            />
-            <StatCard
-              label="Total Faculty"
-              value="86"
-              badge="Available"
-              sub="Staff"
-              progress={72}
-            />
-            <StatCard
-              label="Active Courses"
-              value="42"
-              badge="Running"
-              sub="Courses"
-              progress={68}
-            />
-            <StatCard
-              label="Reports Generated"
-              value="19"
-              badge="This Month"
-              sub="Reports"
-              progress={58}
-            />
+            <div
+              style={{ cursor: "pointer" }}
+              onClick={() => navigate("/admin/students")}
+            >
+              <StatCard
+                label="Total Students"
+                value={`${data.students}`}
+                badge="Live"
+                sub="Users"
+                progress={Math.min(data.students * 20, 100)}
+              />
+            </div>
+
+            <div
+              style={{ cursor: "pointer" }}
+              onClick={() => navigate("/admin/faculty")}
+            >
+              <StatCard
+                label="Total Faculty"
+                value={`${data.faculty}`}
+                badge="Live"
+                sub="Staff"
+                progress={Math.min(data.faculty * 20, 100)}
+              />
+            </div>
+
+            <div
+              style={{ cursor: "pointer" }}
+              onClick={() => navigate("/admin/courses")}
+            >
+              <StatCard
+                label="Active Courses"
+                value={`${data.courses}`}
+                badge="Live"
+                sub="Courses"
+                progress={Math.min(data.courses * 20, 100)}
+              />
+            </div>
+
+            <div
+              style={{ cursor: "pointer" }}
+              onClick={() => navigate("/admin/reports")}
+            >
+              <StatCard
+                label="Reports Available"
+                value={`${data.reports}`}
+                badge="Center"
+                sub="Reports"
+                progress={Math.min(data.reports * 20, 100)}
+              />
+            </div>
           </div>
 
           <div className="dbGridBottom">
@@ -81,43 +196,90 @@ export default function AdminDashboard() {
               </div>
 
               <div className="dbCourseList">
-                {activities.map((item, idx) => (
-                  <div className="dbCourseItem" key={idx}>
-                    <div className="dbCourseTitle">{item.title}</div>
-                    <div className="dbCourseMeta">{item.meta}</div>
+                <div
+                  className="dbCourseItem"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => navigate("/admin/students")}
+                >
+                  <div className="dbCourseTitle">Student Records</div>
+                  <div className="dbCourseMeta">
+                    {data.students} student accounts available
                   </div>
-                ))}
+                </div>
+
+                <div
+                  className="dbCourseItem"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => navigate("/admin/faculty")}
+                >
+                  <div className="dbCourseTitle">Faculty Records</div>
+                  <div className="dbCourseMeta">
+                    {data.faculty} faculty accounts available
+                  </div>
+                </div>
+
+                <div
+                  className="dbCourseItem"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => navigate("/admin/courses")}
+                >
+                  <div className="dbCourseTitle">Course Allocation</div>
+                  <div className="dbCourseMeta">
+                    {data.courses} courses configured in the system
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="dbCard">
               <div className="dbCardHead">
                 <h3>Reports & Alerts</h3>
-                <span className="dbSmallLink">View All</span>
               </div>
 
               <div className="dbNotifList">
-                {reports.map((n, idx) => (
-                  <div className="dbNotifItem" key={idx}>
+                {alerts.map((item, idx) => (
+                  <div
+                    className="dbNotifItem"
+                    key={idx}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => navigate("/admin/reports")}
+                  >
                     <div className="dbNotifDot" />
                     <div className="dbNotifText">
-                      <div className="dbNotifTitle">{n.title}</div>
-                      <div className="dbNotifDesc">{n.text}</div>
-                      <div className="dbNotifTime">{n.time}</div>
+                      <div className="dbNotifTitle">{item.title}</div>
+                      <div className="dbNotifDesc">{item.text}</div>
                     </div>
                   </div>
                 ))}
               </div>
 
               <div className="dbMiniStats">
-                <div className="dbMini">
-                  <div className="dbMiniPct">92%</div>
-                  <div className="dbMiniLbl">System Health</div>
+                <div
+                  className="dbMini"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => navigate("/admin/reports")}
+                >
+                  <div className="dbMiniPct">{data.avg_marks}%</div>
+                  <div className="dbMiniLbl">Average Marks</div>
                 </div>
-                <div className="dbMini">
-                  <div className="dbMiniPct">81%</div>
-                  <div className="dbMiniLbl">Data Updated</div>
+
+                <div
+                  className="dbMini"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => navigate("/admin/reports")}
+                >
+                  <div className="dbMiniPct">{data.reports}</div>
+                  <div className="dbMiniLbl">Reports</div>
                 </div>
+              </div>
+
+              <div style={{ marginTop: 16 }}>
+                <button
+                  className="fpBtn"
+                  onClick={() => navigate("/admin/reports")}
+                >
+                  Open Reports Center
+                </button>
               </div>
             </div>
           </div>

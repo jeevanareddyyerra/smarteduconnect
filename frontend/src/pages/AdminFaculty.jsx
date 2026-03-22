@@ -1,138 +1,270 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar.jsx";
 import Topbar from "../components/Topbar.jsx";
-import StatCard from "../components/StatCard.jsx";
-import "./facultyPages.css";
+import { postForm, getJson } from "../api";
+import "./dashboard.css";
 
 export default function AdminFaculty() {
+  const navigate = useNavigate();
   const userName = localStorage.getItem("userName") || "Admin";
-  const [search, setSearch] = useState("");
+  const role = localStorage.getItem("role");
 
-  const faculty = [
-    { id: 1, name: "Dr. Smith", dept: "CSE", subject: "Data Structures", status: "Active" },
-    { id: 2, name: "Prof. Johnson", dept: "CSE", subject: "Database Systems", status: "Active" },
-    { id: 3, name: "Dr. Williams", dept: "CSE", subject: "Web Development", status: "Active" },
-    { id: 4, name: "Prof. Rao", dept: "ECE", subject: "Digital Electronics", status: "On Leave" },
-  ];
+  const [faculty, setFaculty] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
 
-  const filteredFaculty = useMemo(() => {
-    return faculty.filter((item) =>
-      `${item.name} ${item.dept} ${item.subject}`.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [search]);
+  const [form, setForm] = useState({
+    faculty_id: "",
+    name: "",
+    department: "",
+    email: "",
+    designation: "",
+  });
+
+  const [editingId, setEditingId] = useState("");
+
+  useEffect(() => {
+    if (role !== "admin") {
+      navigate("/", { replace: true });
+      return;
+    }
+    loadFaculty();
+  }, [role, navigate]);
+
+  async function loadFaculty() {
+    try {
+      setLoading(true);
+      const data = await getJson("/jsp/listFaculty.jsp");
+      if (data.ok) {
+        setFaculty(data.items || []);
+      } else {
+        setMessage(data.message || "Failed to load faculty");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage("Failed to load faculty");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleChange(e) {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  }
+
+  function resetForm() {
+    setForm({
+      faculty_id: "",
+      name: "",
+      department: "",
+      email: "",
+      designation: "",
+    });
+    setEditingId("");
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setMessage("");
+
+    try {
+      let data;
+
+      if (editingId) {
+        data = await postForm("/jsp/updateFaculty.jsp", form);
+      } else {
+        data = await postForm("/jsp/addFaculty.jsp", form);
+      }
+
+      if (data.ok) {
+        setMessage(data.message || "Success");
+        resetForm();
+        loadFaculty();
+      } else {
+        setMessage(data.message || "Operation failed");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage("Server error");
+    }
+  }
+
+  function handleEdit(item) {
+    setForm({
+      faculty_id: String(item.faculty_id),
+      name: item.name,
+      department: item.department,
+      email: item.email || "",
+      designation: item.designation || "",
+    });
+    setEditingId(String(item.faculty_id));
+  }
+
+  async function handleDelete(facultyId) {
+    const yes = window.confirm(`Delete faculty ${facultyId}?`);
+    if (!yes) return;
+
+    try {
+      const data = await postForm("/jsp/deleteFaculty.jsp", {
+        faculty_id: facultyId,
+      });
+
+      if (data.ok) {
+        setMessage(data.message || "Deleted successfully");
+        loadFaculty();
+      } else {
+        setMessage(data.message || "Delete failed");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage("Server error");
+    }
+  }
 
   return (
-    <div className="fpLayout">
+    <div className="dbLayout">
       <Sidebar active="Faculty" role="admin" />
-      <div className="fpMain">
+      <div className="dbMain">
         <Topbar userName={userName} role="Admin" />
 
-        <div className="fpContent">
-          <div className="fpHeader">
+        <div className="dbContent">
+          <div className="dbHeader">
             <div>
-              <h2 className="fpTitle">Faculty Management</h2>
-              <p className="fpSub">Manage faculty profiles, departments, and subject assignments.</p>
-            </div>
-
-            <div className="fpActions">
-              <input
-                className="fpInput"
-                type="text"
-                placeholder="Search faculty..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <button
-                className="fpBtn"
-                onClick={() => alert("Add Faculty form can be connected later")}
-              >
-                + Add Faculty
-              </button>
+              <div className="dbWelcome">Manage Faculty</div>
+              <div className="dbSub">
+                Add, update, and delete faculty records
+              </div>
             </div>
           </div>
 
-          <div className="fpStats">
-            <StatCard label="Total Faculty" value="86" badge="Current" sub="Institution" progress={75} />
-            <StatCard label="Departments" value="8" badge="Academic" sub="Managed" progress={68} />
-            <StatCard label="Active Staff" value="79" badge="Available" sub="Teaching" progress={88} />
-          </div>
-
-          <div className="fpGrid">
-            <div className="fpCard">
-              <div className="fpCardHead">
-                <h3>Faculty Directory</h3>
-                <span className="fpSmall">{filteredFaculty.length} records</span>
+          <div className="dbGridBottom" style={{ gridTemplateColumns: "1fr" }}>
+            <div className="dbCard">
+              <div className="dbCardHead">
+                <h3>{editingId ? "Edit Faculty" : "Add Faculty"}</h3>
               </div>
 
-              <div className="fpTableWrap">
-                <table className="fpTable">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Department</th>
-                      <th>Subject</th>
-                      <th>Status</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
+              {message ? (
+                <div style={{ marginBottom: "16px", fontWeight: 500 }}>
+                  {message}
+                </div>
+              ) : null}
 
-                  <tbody>
-                    {filteredFaculty.map((item) => (
-                      <tr key={item.id}>
-                        <td className="fpStrong">{item.name}</td>
-                        <td>{item.dept}</td>
-                        <td>{item.subject}</td>
-                        <td>
-                          <span className={`fpBadge ${item.status === "Active" ? "good" : "warn"}`}>
-                            {item.status}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            className="fpOutlineBtn"
-                            onClick={() => alert(`Edit ${item.name}`)}
-                          >
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+              <form onSubmit={handleSubmit}>
+                <div style={{ display: "grid", gap: "12px" }}>
+                  <input
+                    type="number"
+                    name="faculty_id"
+                    placeholder="Faculty ID"
+                    value={form.faculty_id}
+                    onChange={handleChange}
+                    required
+                    disabled={!!editingId}
+                    style={inputStyle}
+                  />
+                  <input
+                    type="text"
+                    name="name"
+                    placeholder="Name"
+                    value={form.name}
+                    onChange={handleChange}
+                    required
+                    style={inputStyle}
+                  />
+                  <input
+                    type="text"
+                    name="department"
+                    placeholder="Department"
+                    value={form.department}
+                    onChange={handleChange}
+                    required
+                    style={inputStyle}
+                  />
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Email"
+                    value={form.email}
+                    onChange={handleChange}
+                    style={inputStyle}
+                  />
+                  <input
+                    type="text"
+                    name="designation"
+                    placeholder="Designation"
+                    value={form.designation}
+                    onChange={handleChange}
+                    style={inputStyle}
+                  />
 
-                    {filteredFaculty.length === 0 && (
+                  <div style={{ display: "flex", gap: "12px" }}>
+                    <button type="submit" style={btnStyle}>
+                      {editingId ? "Update Faculty" : "Add Faculty"}
+                    </button>
+
+                    {editingId ? (
+                      <button type="button" onClick={resetForm} style={btnStyle}>
+                        Cancel
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <div className="dbCard">
+              <div className="dbCardHead">
+                <h3>Faculty Records</h3>
+              </div>
+
+              {loading ? (
+                <p>Loading faculty...</p>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
                       <tr>
-                        <td colSpan="5" className="fpEmpty">No faculty records found.</td>
+                        <th style={thStyle}>Faculty ID</th>
+                        <th style={thStyle}>Name</th>
+                        <th style={thStyle}>Department</th>
+                        <th style={thStyle}>Email</th>
+                        <th style={thStyle}>Designation</th>
+                        <th style={thStyle}>Actions</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="fpSideCard">
-              <h3>Quick Controls</h3>
-              <div className="fpList" style={{ marginTop: 14 }}>
-                <div className="fpItem">
-                  <div className="fpItemTitle">Assign Subjects</div>
-                  <div className="fpItemSub">Map faculty members to semesters and courses.</div>
+                    </thead>
+                    <tbody>
+                      {faculty.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" style={tdStyle}>
+                            No faculty found
+                          </td>
+                        </tr>
+                      ) : (
+                        faculty.map((item) => (
+                          <tr key={item.faculty_id}>
+                            <td style={tdStyle}>{item.faculty_id}</td>
+                            <td style={tdStyle}>{item.name}</td>
+                            <td style={tdStyle}>{item.department}</td>
+                            <td style={tdStyle}>{item.email}</td>
+                            <td style={tdStyle}>{item.designation}</td>
+                            <td style={tdStyle}>
+                              <button onClick={() => handleEdit(item)} style={actionBtnStyle}>
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDelete(item.faculty_id)}
+                                style={{ ...actionBtnStyle, marginLeft: "8px" }}
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="fpItem">
-                  <div className="fpItemTitle">Department Transfer</div>
-                  <div className="fpItemSub">Update department or role details.</div>
-                </div>
-                <div className="fpItem">
-                  <div className="fpItemTitle">Leave Monitoring</div>
-                  <div className="fpItemSub">Track inactive or unavailable staff.</div>
-                </div>
-              </div>
-
-              <div className="fpActionRow">
-                <button className="fpOutlineBtn" onClick={() => alert("Faculty import can be linked later")}>
-                  Import Faculty
-                </button>
-                <button className="fpBtn" onClick={() => alert("Faculty export can be linked later")}>
-                  Export Faculty
-                </button>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -140,3 +272,34 @@ export default function AdminFaculty() {
     </div>
   );
 }
+
+const inputStyle = {
+  padding: "12px",
+  borderRadius: "10px",
+  border: "1px solid #ccc",
+};
+
+const btnStyle = {
+  padding: "12px 18px",
+  border: "none",
+  borderRadius: "10px",
+  cursor: "pointer",
+};
+
+const thStyle = {
+  textAlign: "left",
+  padding: "12px",
+  borderBottom: "1px solid #ddd",
+};
+
+const tdStyle = {
+  padding: "12px",
+  borderBottom: "1px solid #eee",
+};
+
+const actionBtnStyle = {
+  padding: "8px 12px",
+  border: "none",
+  borderRadius: "8px",
+  cursor: "pointer",
+};

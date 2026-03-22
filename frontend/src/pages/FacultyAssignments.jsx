@@ -1,36 +1,98 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar.jsx";
 import Topbar from "../components/Topbar.jsx";
+import { getJson, postForm } from "../api";
 import "./facultyPages.css";
 
 export default function FacultyAssignments() {
   const userName = localStorage.getItem("userName") || "Faculty";
+  const facultyId = localStorage.getItem("linked_id") || "";
 
+  const [courseOptions, setCourseOptions] = useState([]);
   const [assignmentTitle, setAssignmentTitle] = useState("");
-  const [subject, setSubject] = useState("Data Structures");
-  const [dueDate, setDueDate] = useState("2026-03-15");
+  const [courseCode, setCourseCode] = useState("");
+  const [dueDate, setDueDate] = useState(new Date().toISOString().split("T")[0]);
+  const [marks, setMarks] = useState(10);
   const [description, setDescription] = useState("");
+  const [assignments, setAssignments] = useState([]);
+  const [message, setMessage] = useState("");
 
-  const assignments = [
-    { id: 1, title: "Linked List Implementation", subject: "Data Structures", due: "2026-03-10", submissions: 34, status: "Open" },
-    { id: 2, title: "Normalization Report", subject: "Database Systems", due: "2026-03-14", submissions: 28, status: "Open" },
-    { id: 3, title: "React Component Lab", subject: "Web Development", due: "2026-03-02", submissions: 40, status: "Closed" },
-  ];
+  useEffect(() => {
+    loadFacultyCourses();
+    loadAssignments();
+  }, [facultyId]);
 
-  const handleCreate = () => {
-    if (!assignmentTitle || !description) {
-      alert("Please enter assignment title and description.");
+  async function loadFacultyCourses() {
+    try {
+      const data = await getJson(
+        `/jsp/getFacultyCourses.jsp?faculty_id=${encodeURIComponent(facultyId)}`
+      );
+
+      if (data.ok) {
+        const items = data.items || [];
+        setCourseOptions(items);
+        if (items.length > 0) {
+          setCourseCode(items[0].course_code);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function loadAssignments() {
+    setMessage("");
+
+    try {
+      const data = await getJson(
+        `/jsp/getFacultyAssignments.jsp?faculty_id=${encodeURIComponent(facultyId)}`
+      );
+
+      if (data.ok) {
+        setAssignments(data.items || []);
+      } else {
+        setMessage(data.message || "Failed to load assignments");
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage("Failed to load assignments");
+    }
+  }
+
+  async function handleCreate() {
+    if (!assignmentTitle || !description || !courseCode || !dueDate) {
+      setMessage("Please fill all assignment fields.");
       return;
     }
 
-    alert(`Assignment "${assignmentTitle}" created for ${subject}`);
-    setAssignmentTitle("");
-    setDescription("");
-  };
+    try {
+      const data = await postForm("/jsp/createAssignment.jsp", {
+        title: assignmentTitle,
+        course_code: courseCode,
+        description: description,
+        due_date: dueDate,
+        marks: marks,
+      });
+
+      if (data.ok) {
+        setMessage("Assignment created successfully");
+        setAssignmentTitle("");
+        setDescription("");
+        setMarks(10);
+        loadAssignments();
+      } else {
+        setMessage(data.message || "Failed to create assignment");
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage("Failed to create assignment");
+    }
+  }
 
   return (
     <div className="fpLayout">
       <Sidebar active="Assignments" role="faculty" />
+
       <div className="fpMain">
         <Topbar userName={userName} role="Faculty" />
 
@@ -41,6 +103,8 @@ export default function FacultyAssignments() {
               <p className="fpSub">Create, manage, and review student assignments.</p>
             </div>
           </div>
+
+          {message && <div style={{ marginBottom: 16 }}>{message}</div>}
 
           <div className="fpGrid">
             <div className="fpCard">
@@ -62,15 +126,17 @@ export default function FacultyAssignments() {
                 </div>
 
                 <div>
-                  <label className="fpLabel">Subject</label>
+                  <label className="fpLabel">Course Code</label>
                   <select
                     className="fpSelect"
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
+                    value={courseCode}
+                    onChange={(e) => setCourseCode(e.target.value)}
                   >
-                    <option>Data Structures</option>
-                    <option>Database Systems</option>
-                    <option>Web Development</option>
+                    {courseOptions.map((course) => (
+                      <option key={course.course_code} value={course.course_code}>
+                        {course.course_code}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -81,6 +147,16 @@ export default function FacultyAssignments() {
                     type="date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="fpLabel">Marks</label>
+                  <input
+                    className="fpInput"
+                    type="number"
+                    value={marks}
+                    onChange={(e) => setMarks(e.target.value)}
                   />
                 </div>
 
@@ -99,12 +175,6 @@ export default function FacultyAssignments() {
                 <button className="fpBtn" onClick={handleCreate}>
                   Publish Assignment
                 </button>
-                <button
-                  className="fpOutlineBtn"
-                  onClick={() => alert("Draft save can be connected later")}
-                >
-                  Save Draft
-                </button>
               </div>
             </div>
 
@@ -112,23 +182,27 @@ export default function FacultyAssignments() {
               <h3>Existing Assignments</h3>
 
               <div className="fpList" style={{ marginTop: 14 }}>
-                {assignments.map((item) => (
-                  <div className="fpItem" key={item.id}>
-                    <div className="fpItemTop">
-                      <div className="fpItemTitle">{item.title}</div>
-                      <span className={`fpBadge ${item.status === "Open" ? "good" : "warn"}`}>
-                        {item.status}
-                      </span>
+                {assignments.length > 0 ? (
+                  assignments.map((item) => (
+                    <div className="fpItem" key={item.id}>
+                      <div className="fpItemTop">
+                        <div className="fpItemTitle">{item.title}</div>
+                        <span className={`fpBadge ${item.status === "Pending" ? "warn" : "good"}`}>
+                          {item.status}
+                        </span>
+                      </div>
+                      <div className="fpItemSub">
+                        {item.course_code} • Due {item.due_date} • {item.marks} marks
+                      </div>
                     </div>
-                    <div className="fpItemSub">
-                      {item.subject} • Due {item.due} • {item.submissions} submissions
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <div className="fpNote">No assignments created yet.</div>
+                )}
               </div>
 
               <div className="fpNote">
-                Submission review and grading can be connected after backend integration.
+                Published assignments will be visible to students enrolled in that course.
               </div>
             </div>
           </div>

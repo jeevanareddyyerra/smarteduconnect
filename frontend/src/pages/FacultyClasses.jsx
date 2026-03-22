@@ -1,25 +1,50 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Sidebar from "../components/Sidebar.jsx";
 import Topbar from "../components/Topbar.jsx";
 import StatCard from "../components/StatCard.jsx";
+import { getJson } from "../api";
 import "./facultyPages.css";
 
 export default function FacultyClasses() {
   const userName = localStorage.getItem("userName") || "Faculty";
+  const facultyId = localStorage.getItem("linked_id") || "";
   const [search, setSearch] = useState("");
+  const [classes, setClasses] = useState([]);
+  const [message, setMessage] = useState("");
 
-  const classes = [
-    { id: 1, section: "CSE-A", subject: "Data Structures", room: "A-204", time: "9:30 AM", students: 48, status: "Today" },
-    { id: 2, section: "CSE-B", subject: "Database Systems", room: "B-112", time: "11:00 AM", students: 44, status: "Today" },
-    { id: 3, section: "CSE-C", subject: "Web Development", room: "Lab-3", time: "2:00 PM", students: 40, status: "Upcoming" },
-    { id: 4, section: "CSE-A", subject: "Mentoring Hour", room: "Seminar Hall", time: "4:00 PM", students: 48, status: "Upcoming" },
-  ];
+  useEffect(() => {
+    loadClasses();
+  }, [facultyId]);
+
+  async function loadClasses() {
+    setMessage("");
+
+    if (!facultyId) {
+      setMessage("Faculty ID not found. Please log in again.");
+      return;
+    }
+
+    try {
+      const data = await getJson(
+        `/jsp/getFacultyCourses.jsp?faculty_id=${encodeURIComponent(facultyId)}`
+      );
+
+      if (data.ok) {
+        setClasses(data.items || []);
+      } else {
+        setMessage(data.message || "Failed to load classes");
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage("Failed to load classes");
+    }
+  }
 
   const filtered = useMemo(() => {
     return classes.filter((item) =>
-      `${item.section} ${item.subject} ${item.room}`.toLowerCase().includes(search.toLowerCase())
+      `${item.course_code} ${item.course_name}`.toLowerCase().includes(search.toLowerCase())
     );
-  }, [search]);
+  }, [classes, search]);
 
   return (
     <div className="fpLayout">
@@ -32,7 +57,7 @@ export default function FacultyClasses() {
           <div className="fpHeader">
             <div>
               <h2 className="fpTitle">My Classes</h2>
-              <p className="fpSub">View assigned sections, timings, rooms, and subject details.</p>
+              <p className="fpSub">View courses assigned to you.</p>
             </div>
 
             <div className="fpActions">
@@ -52,10 +77,12 @@ export default function FacultyClasses() {
             </div>
           </div>
 
+          {message && <div style={{ marginBottom: 16 }}>{message}</div>}
+
           <div className="fpStats">
-            <StatCard label="Classes Today" value="2" badge="Schedule" sub="Today" progress={50} />
-            <StatCard label="Total Students" value="180" badge="Active" sub="Across Classes" progress={85} />
-            <StatCard label="Upcoming Sessions" value="2" badge="Later" sub="For Today" progress={40} />
+            <StatCard label="Assigned Classes" value={`${classes.length}`} badge="Schedule" sub="Current" progress={Math.min(classes.length * 20, 100)} />
+            <StatCard label="Faculty ID" value={facultyId} badge="Active" sub="Profile" progress={85} />
+            <StatCard label="Visible Classes" value={`${filtered.length}`} badge="Filtered" sub="Search View" progress={Math.min(filtered.length * 20, 100)} />
           </div>
 
           <div className="fpGrid">
@@ -69,33 +96,23 @@ export default function FacultyClasses() {
                 <table className="fpTable">
                   <thead>
                     <tr>
-                      <th>Section</th>
+                      <th>Course Code</th>
                       <th>Subject</th>
-                      <th>Room</th>
-                      <th>Time</th>
-                      <th>Students</th>
-                      <th>Status</th>
+                      <th>Credits</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((item) => (
-                      <tr key={item.id}>
-                        <td className="fpStrong">{item.section}</td>
-                        <td>{item.subject}</td>
-                        <td>{item.room}</td>
-                        <td className="fpMono">{item.time}</td>
-                        <td>{item.students}</td>
-                        <td>
-                          <span className={`fpBadge ${item.status === "Today" ? "good" : "warn"}`}>
-                            {item.status}
-                          </span>
-                        </td>
+                    {filtered.map((item, index) => (
+                      <tr key={index}>
+                        <td className="fpStrong">{item.course_code}</td>
+                        <td>{item.course_name}</td>
+                        <td>{item.credits}</td>
                       </tr>
                     ))}
 
                     {filtered.length === 0 && (
                       <tr>
-                        <td colSpan="6" className="fpEmpty">No classes matched your search.</td>
+                        <td colSpan="3" className="fpEmpty">No classes matched your search.</td>
                       </tr>
                     )}
                   </tbody>
@@ -108,25 +125,16 @@ export default function FacultyClasses() {
               <div className="fpList" style={{ marginTop: 14 }}>
                 <div className="fpItem">
                   <div className="fpItemTitle">Open Attendance</div>
-                  <div className="fpItemSub">Go to attendance management for current class.</div>
+                  <div className="fpItemSub">Go to attendance management for assigned course.</div>
                 </div>
                 <div className="fpItem">
                   <div className="fpItemTitle">Upload Marks</div>
-                  <div className="fpItemSub">Enter assessment scores for assigned sections.</div>
+                  <div className="fpItemSub">Enter marks for your assigned course.</div>
                 </div>
                 <div className="fpItem">
                   <div className="fpItemTitle">Create Assignment</div>
-                  <div className="fpItemSub">Post a new task or lab work for students.</div>
+                  <div className="fpItemSub">Post assignment for your assigned course.</div>
                 </div>
-              </div>
-
-              <div className="fpActionRow">
-                <button className="fpOutlineBtn" onClick={() => alert("Class details can be linked later")}>
-                  View Details
-                </button>
-                <button className="fpBtn" onClick={() => alert("Class notices can be linked later")}>
-                  Post Notice
-                </button>
               </div>
             </div>
           </div>

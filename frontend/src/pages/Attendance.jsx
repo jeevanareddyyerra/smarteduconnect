@@ -1,41 +1,50 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Sidebar from "../components/Sidebar.jsx";
 import Topbar from "../components/Topbar.jsx";
 import StatCard from "../components/StatCard.jsx";
+import { getJson } from "../api";
 import "./attendance.css";
 
 export default function Attendance() {
   const userName = localStorage.getItem("userName") || "Student";
+  const rollNumber = localStorage.getItem("linked_id");
 
-  const [course, setCourse] = useState("CS201");
   const [view, setView] = useState("All");
+  const [records, setRecords] = useState([]);
+  const [message, setMessage] = useState("");
 
-  const data = {
-    CS201: [
-      { date: "2026-02-20", topic: "Arrays", status: "Present" },
-      { date: "2026-02-21", topic: "Linked Lists", status: "Present" },
-      { date: "2026-02-22", topic: "Stacks", status: "Absent" },
-      { date: "2026-02-23", topic: "Queues", status: "Present" },
-      { date: "2026-02-24", topic: "Trees", status: "Present" },
-    ],
-    CS301: [
-      { date: "2026-02-20", topic: "ER Model", status: "Present" },
-      { date: "2026-02-21", topic: "SQL Basics", status: "Absent" },
-      { date: "2026-02-22", topic: "Joins", status: "Present" },
-      { date: "2026-02-23", topic: "Normalization", status: "Present" },
-    ],
-    CS401: [
-      { date: "2026-02-20", topic: "HTML Forms", status: "Present" },
-      { date: "2026-02-21", topic: "CSS Layout", status: "Present" },
-      { date: "2026-02-22", topic: "JavaScript DOM", status: "Present" },
-      { date: "2026-02-23", topic: "React Intro", status: "Present" },
-    ],
-  };
+  useEffect(() => {
+    loadAttendance();
+  }, [rollNumber]);
 
-  const records = data[course] || [];
+  async function loadAttendance() {
+    setMessage("");
+
+    if (!rollNumber) {
+      setMessage("Student roll number not found. Please log in again.");
+      return;
+    }
+
+    try {
+      const data = await getJson(
+        `/jsp/getStudentAttendance.jsp?roll_number=${encodeURIComponent(rollNumber)}`
+      );
+
+      if (data.ok) {
+        setRecords(data.items || []);
+      } else {
+        setMessage(data.message || "Failed to load attendance");
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage("Failed to load attendance");
+    }
+  }
 
   const filteredRecords =
-    view === "All" ? records : records.filter((item) => item.status === view);
+    view === "All"
+      ? records
+      : records.filter((item) => item.status === view);
 
   const summary = useMemo(() => {
     const total = records.length;
@@ -64,25 +73,10 @@ export default function Attendance() {
           <div className="atHeader">
             <div>
               <h2 className="atTitle">Attendance</h2>
-              <p className="atSub">
-                Track your subject-wise attendance and class records.
-              </p>
+              <p className="atSub">Track your subject-wise attendance</p>
             </div>
 
             <div className="atControls">
-              <div className="atControlBox">
-                <label className="atLabel">Course</label>
-                <select
-                  className="atSelect"
-                  value={course}
-                  onChange={(e) => setCourse(e.target.value)}
-                >
-                  <option value="CS201">CS201 - Data Structures</option>
-                  <option value="CS301">CS301 - Database Systems</option>
-                  <option value="CS401">CS401 - Web Development</option>
-                </select>
-              </div>
-
               <div className="atControlBox">
                 <label className="atLabel">View</label>
                 <select
@@ -95,15 +89,10 @@ export default function Attendance() {
                   <option value="Absent">Absent Only</option>
                 </select>
               </div>
-
-              <button
-                className="atBtn"
-                onClick={() => alert("Attendance report download can be connected later")}
-              >
-                Download Report
-              </button>
             </div>
           </div>
+
+          {message && <div style={{ marginBottom: 15 }}>{message}</div>}
 
           <div className="atStats">
             <StatCard
@@ -113,6 +102,7 @@ export default function Attendance() {
               sub="Overall"
               progress={summary.percent}
             />
+
             <StatCard
               label="Classes Attended"
               value={`${summary.present}`}
@@ -120,6 +110,7 @@ export default function Attendance() {
               sub={`Out of ${summary.total}`}
               progress={summary.total ? (summary.present / summary.total) * 100 : 0}
             />
+
             <StatCard
               label="Absences"
               value={`${summary.absent}`}
@@ -146,7 +137,6 @@ export default function Attendance() {
                   <tr>
                     <th>Date</th>
                     <th>Course</th>
-                    <th>Topic Covered</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -155,8 +145,7 @@ export default function Attendance() {
                   {filteredRecords.map((record, idx) => (
                     <tr key={idx}>
                       <td className="atMono">{record.date}</td>
-                      <td className="atStrong">{course}</td>
-                      <td>{record.topic}</td>
+                      <td className="atStrong">{record.course_code}</td>
                       <td>
                         <span
                           className={`atBadge ${
@@ -171,8 +160,8 @@ export default function Attendance() {
 
                   {filteredRecords.length === 0 && (
                     <tr>
-                      <td colSpan="4" className="atEmpty">
-                        No attendance records found for this filter.
+                      <td colSpan="3" className="atEmpty">
+                        No attendance records found
                       </td>
                     </tr>
                   )}
@@ -181,7 +170,7 @@ export default function Attendance() {
             </div>
 
             <div className="atNote">
-              Minimum recommended attendance: <b>75%</b>.
+              Minimum recommended attendance: <b>75%</b>
             </div>
           </div>
         </div>

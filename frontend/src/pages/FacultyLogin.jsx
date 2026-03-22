@@ -7,11 +7,10 @@ export default function FacultyLogin() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSubmit = async (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
 
@@ -24,43 +23,29 @@ export default function FacultyLogin() {
 
     try {
       const formData = new URLSearchParams();
-      formData.append("email", email);
+      formData.append("username", email);
       formData.append("password", password);
+      formData.append("role", "faculty");
 
-      const response = await fetch(
-        `${window.location.origin}/SmartEdu1/api/faculty/login`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: formData.toString(),
-        }
-      );
+      const response = await fetch("/jsp/loginApi.jsp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
 
-      const xmlText = await response.text();
-      const parser = new DOMParser();
-      const xml = parser.parseFromString(xmlText, "text/xml");
+      const data = await response.json();
+      console.log("FACULTY LOGIN RESPONSE:", data);
 
-      const parseError = xml.getElementsByTagName("parsererror")[0];
-      if (parseError) {
-        setErrorMsg("Server returned an invalid response. Check Tomcat logs.");
-        return;
-      }
-
-      const status = xml.getElementsByTagName("status")[0]?.textContent?.trim();
-
-      if (status === "success") {
-        const name =
-          xml.getElementsByTagName("name")[0]?.textContent?.trim() || "Faculty";
-
-        localStorage.setItem("role", "faculty");
-        localStorage.setItem("userName", name);
+      if (data.ok) {
+        localStorage.setItem("role", data.role || "faculty");
+        localStorage.setItem("userName", data.display_name || "Faculty");
+        localStorage.setItem("linked_id", data.linked_id || "");
 
         navigate("/faculty/dashboard");
       } else {
-        const message =
-          xml.getElementsByTagName("message")[0]?.textContent?.trim() ||
-          "Login failed";
-        setErrorMsg(message);
+        setErrorMsg(data.message || "Login failed");
       }
     } catch (error) {
       console.error(error);
@@ -84,7 +69,7 @@ export default function FacultyLogin() {
           </Link>
         </div>
 
-        <form className="slForm" onSubmit={handleSubmit}>
+        <form className="slForm" onSubmit={onSubmit}>
           {errorMsg ? (
             <div className="slError" role="alert">
               {errorMsg}
@@ -113,8 +98,8 @@ export default function FacultyLogin() {
 
           <div className="slRow">
             <button
-              className="slLinkBtn"
               type="button"
+              className="slLinkBtn"
               onClick={() => alert("Forgot password feature coming soon")}
               disabled={loading}
             >
@@ -127,7 +112,7 @@ export default function FacultyLogin() {
           </button>
 
           <div className="slBottom">
-            Don't have an account?{" "}
+            <span>Don’t have an account?</span>{" "}
             <Link className="slCreate" to="/faculty/register">
               Create Account
             </Link>

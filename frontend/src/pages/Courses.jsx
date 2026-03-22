@@ -1,67 +1,57 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Sidebar from "../components/Sidebar.jsx";
 import Topbar from "../components/Topbar.jsx";
+import { getJson } from "../api";
 import "./courses.css";
 
 export default function Courses() {
   const userName = localStorage.getItem("userName") || "Student";
+  const rollNumber = localStorage.getItem("linked_id");
 
-  const allCourses = [
-    {
-      code: "CS201",
-      name: "Data Structures",
-      faculty: "Dr. Smith",
-      status: "Active",
-      credits: 4,
-      semester: "Semester 3",
-      description: "Learn arrays, linked lists, stacks, queues, trees, and graphs.",
-    },
-    {
-      code: "CS301",
-      name: "Database Systems",
-      faculty: "Prof. Johnson",
-      status: "Active",
-      credits: 3,
-      semester: "Semester 3",
-      description: "Understand SQL, normalization, ER modeling, and transactions.",
-    },
-    {
-      code: "CS401",
-      name: "Web Development",
-      faculty: "Dr. Williams",
-      status: "Active",
-      credits: 4,
-      semester: "Semester 4",
-      description: "Build modern web apps using frontend and backend fundamentals.",
-    },
-    {
-      code: "CS501",
-      name: "Computer Networks",
-      faculty: "Prof. Brown",
-      status: "Completed",
-      credits: 3,
-      semester: "Semester 2",
-      description: "Study network layers, routing, protocols, and internet basics.",
-    },
-  ];
-
+  const [allCourses, setAllCourses] = useState([]);
+  const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [selectedCourse, setSelectedCourse] = useState(allCourses[0]);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+
+  useEffect(() => {
+    loadCourses();
+  }, [rollNumber]);
+
+  async function loadCourses() {
+    setMessage("");
+
+    if (!rollNumber) {
+      setMessage("Student roll number not found. Please log in again.");
+      return;
+    }
+
+    try {
+      const data = await getJson(
+        `/jsp/getStudentCourse.jsp?roll_number=${encodeURIComponent(rollNumber)}`
+      );
+
+      if (data.ok) {
+        const items = data.items || [];
+        setAllCourses(items);
+        setSelectedCourse(items.length > 0 ? items[0] : null);
+      } else {
+        setMessage(data.message || "Failed to load courses");
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage("Failed to load courses");
+    }
+  }
 
   const filteredCourses = useMemo(() => {
     return allCourses.filter((course) => {
-      const matchesSearch =
-        course.code.toLowerCase().includes(search.toLowerCase()) ||
-        course.name.toLowerCase().includes(search.toLowerCase()) ||
-        course.faculty.toLowerCase().includes(search.toLowerCase());
-
-      const matchesStatus =
-        statusFilter === "All" ? true : course.status === statusFilter;
-
-      return matchesSearch && matchesStatus;
+      return (
+        course.course_code.toLowerCase().includes(search.toLowerCase()) ||
+        course.course_name.toLowerCase().includes(search.toLowerCase()) ||
+        course.faculty.toLowerCase().includes(search.toLowerCase())
+      );
     });
-  }, [search, statusFilter]);
+  }, [allCourses, search]);
 
   return (
     <div className="csLayout">
@@ -75,17 +65,19 @@ export default function Courses() {
             <div>
               <h2 className="csTitle">Courses</h2>
               <p className="csSub">
-                View your enrolled courses, faculty details, and course information.
+                View your available courses, faculty details, and course information.
               </p>
             </div>
 
             <button
               className="csBtn"
-              onClick={() => alert("Course enrollment request feature can be connected later")}
+              onClick={() => alert("Course request feature can be connected later")}
             >
               + Request Course
             </button>
           </div>
+
+          {message && <div style={{ marginBottom: "16px" }}>{message}</div>}
 
           <div className="csToolbar">
             <input
@@ -95,16 +87,6 @@ export default function Courses() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-
-            <select
-              className="csFilter"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="All">All Status</option>
-              <option value="Active">Active</option>
-              <option value="Completed">Completed</option>
-            </select>
           </div>
 
           <div className="csGrid">
@@ -121,7 +103,6 @@ export default function Courses() {
                       <th>Code</th>
                       <th>Course</th>
                       <th>Faculty</th>
-                      <th>Status</th>
                       <th>Credits</th>
                       <th style={{ textAlign: "right" }}>Action</th>
                     </tr>
@@ -129,19 +110,10 @@ export default function Courses() {
 
                   <tbody>
                     {filteredCourses.map((course) => (
-                      <tr key={course.code}>
-                        <td className="csMono">{course.code}</td>
-                        <td className="csStrong">{course.name}</td>
+                      <tr key={course.course_code}>
+                        <td className="csMono">{course.course_code}</td>
+                        <td className="csStrong">{course.course_name}</td>
                         <td>{course.faculty}</td>
-                        <td>
-                          <span
-                            className={`csBadge ${
-                              course.status === "Active" ? "active" : "inactive"
-                            }`}
-                          >
-                            {course.status}
-                          </span>
-                        </td>
                         <td>{course.credits}</td>
                         <td style={{ textAlign: "right" }}>
                           <button
@@ -156,7 +128,7 @@ export default function Courses() {
 
                     {filteredCourses.length === 0 && (
                       <tr>
-                        <td colSpan="6" className="csEmpty">
+                        <td colSpan="5" className="csEmpty">
                           No courses matched your search.
                         </td>
                       </tr>
@@ -173,8 +145,8 @@ export default function Courses() {
 
               {selectedCourse ? (
                 <>
-                  <div className="csDetailTitle">{selectedCourse.name}</div>
-                  <div className="csDetailCode">{selectedCourse.code}</div>
+                  <div className="csDetailTitle">{selectedCourse.course_name}</div>
+                  <div className="csDetailCode">{selectedCourse.course_code}</div>
 
                   <div className="csDetailList">
                     <div className="csDetailRow">
@@ -182,25 +154,21 @@ export default function Courses() {
                       <strong>{selectedCourse.faculty}</strong>
                     </div>
                     <div className="csDetailRow">
-                      <span>Semester</span>
-                      <strong>{selectedCourse.semester}</strong>
-                    </div>
-                    <div className="csDetailRow">
                       <span>Credits</span>
                       <strong>{selectedCourse.credits}</strong>
                     </div>
                     <div className="csDetailRow">
                       <span>Status</span>
-                      <strong>{selectedCourse.status}</strong>
+                      <strong>Active</strong>
                     </div>
                   </div>
-
-                  <p className="csDetailDesc">{selectedCourse.description}</p>
 
                   <div className="csSideActions">
                     <button
                       className="csOutlineBtn"
-                      onClick={() => alert(`Open syllabus for ${selectedCourse.code}`)}
+                      onClick={() =>
+                        alert(`Open syllabus for ${selectedCourse.course_code}`)
+                      }
                     >
                       View Syllabus
                     </button>

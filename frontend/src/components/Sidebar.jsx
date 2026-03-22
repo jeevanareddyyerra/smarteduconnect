@@ -1,16 +1,24 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./sidebar.css";
+import { logoutUser } from "../api";
 
 export default function Sidebar({ active = "Dashboard", role = "student" }) {
   const navigate = useNavigate();
 
   const itemClass = (name) => (active === name ? "sbItem active" : "sbItem");
 
-  const handleLogout = () => {
-    localStorage.removeItem("role");
-    localStorage.removeItem("userName");
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch (e) {
+      console.error("Logout API failed:", e);
+    } finally {
+      localStorage.removeItem("role");
+      localStorage.removeItem("userName");
+      localStorage.removeItem("linked_id");
+      navigate("/");
+    }
   };
 
   const menuByRole = {

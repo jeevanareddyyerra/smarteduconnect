@@ -1,58 +1,53 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Sidebar from "../components/Sidebar.jsx";
 import Topbar from "../components/Topbar.jsx";
+import { getJson } from "../api";
 import "./assignments.css";
 
 export default function Assignments() {
   const userName = localStorage.getItem("userName") || "Student";
+  const rollNumber = localStorage.getItem("linked_id");
 
-  const assignmentItems = [
-    {
-      id: 1,
-      title: "DSA - Linked Lists Implementation",
-      course: "CS201",
-      due: "Tomorrow",
-      status: "Pending",
-      marks: 10,
-      description: "Implement singly and doubly linked lists with basic operations.",
-    },
-    {
-      id: 2,
-      title: "DBMS - Normal Forms Report",
-      course: "CS301",
-      due: "In 3 days",
-      status: "Pending",
-      marks: 15,
-      description: "Prepare a short report on 1NF, 2NF, 3NF, and BCNF.",
-    },
-    {
-      id: 3,
-      title: "React Mini UI",
-      course: "CS401",
-      due: "Next Week",
-      status: "Submitted",
-      marks: 20,
-      description: "Create a small responsive React interface with reusable components.",
-    },
-    {
-      id: 4,
-      title: "Network Models Comparison",
-      course: "CS501",
-      due: "Completed",
-      status: "Reviewed",
-      marks: 10,
-      description: "Compare OSI and TCP/IP models with a diagram.",
-    },
-  ];
-
+  const [assignmentItems, setAssignmentItems] = useState([]);
   const [filter, setFilter] = useState("All");
-  const [selected, setSelected] = useState(assignmentItems[0]);
+  const [selected, setSelected] = useState(null);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    loadAssignments();
+  }, [rollNumber]);
+
+  async function loadAssignments() {
+    setMessage("");
+
+    if (!rollNumber) {
+      setMessage("Student roll number not found. Please log in again.");
+      return;
+    }
+
+    try {
+      const data = await getJson(
+        `/jsp/getStudentAssignments.jsp?roll_number=${encodeURIComponent(rollNumber)}`
+      );
+
+      if (data.ok) {
+        const items = data.items || [];
+        setAssignmentItems(items);
+        setSelected(items.length > 0 ? items[0] : null);
+      } else {
+        setMessage(data.message || "Failed to load assignments");
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage("Failed to load assignments");
+    }
+  }
 
   const filteredItems = useMemo(() => {
     return filter === "All"
       ? assignmentItems
       : assignmentItems.filter((item) => item.status === filter);
-  }, [filter]);
+  }, [filter, assignmentItems]);
 
   const statusClass = (status) => {
     if (status === "Submitted" || status === "Reviewed") return "asPill good";
@@ -88,6 +83,8 @@ export default function Assignments() {
             </select>
           </div>
 
+          {message && <div style={{ marginBottom: 16 }}>{message}</div>}
+
           <div className="asGrid">
             <div className="asCard">
               <div className="asCardHead">
@@ -99,9 +96,7 @@ export default function Assignments() {
                 {filteredItems.map((item) => (
                   <button
                     key={item.id}
-                    className={`asItem ${
-                      selected?.id === item.id ? "active" : ""
-                    }`}
+                    className={`asItem ${selected?.id === item.id ? "active" : ""}`}
                     onClick={() => setSelected(item)}
                   >
                     <div className="asItemLeft">

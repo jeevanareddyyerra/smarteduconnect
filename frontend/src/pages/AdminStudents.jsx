@@ -1,160 +1,301 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar.jsx";
 import Topbar from "../components/Topbar.jsx";
-import StatCard from "../components/StatCard.jsx";
-import "./facultyPages.css";
+import { postForm, getJson } from "../api";
+import "./dashboard.css";
 
 export default function AdminStudents() {
+  const navigate = useNavigate();
   const userName = localStorage.getItem("userName") || "Admin";
-  const [search, setSearch] = useState("");
-  const [department, setDepartment] = useState("All");
+  const role = localStorage.getItem("role");
 
-  const students = [
-    { id: 1, roll: "23CSE001", name: "Aarav Kumar", dept: "CSE", year: "1st Year", status: "Active" },
-    { id: 2, roll: "23CSE002", name: "Diya Sharma", dept: "CSE", year: "1st Year", status: "Active" },
-    { id: 3, roll: "23ECE014", name: "Karthik Rao", dept: "ECE", year: "2nd Year", status: "Active" },
-    { id: 4, roll: "23ME009", name: "Nithin Varma", dept: "MECH", year: "1st Year", status: "Inactive" },
-    { id: 5, roll: "23CSE021", name: "Sneha Reddy", dept: "CSE", year: "2nd Year", status: "Active" },
-  ];
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
 
-  const filteredStudents = useMemo(() => {
-    return students.filter((student) => {
-      const matchesSearch =
-        student.name.toLowerCase().includes(search.toLowerCase()) ||
-        student.roll.toLowerCase().includes(search.toLowerCase());
+  const [form, setForm] = useState({
+    roll_number: "",
+    name: "",
+    department: "",
+    year: "",
+    email: "",
+  });
 
-      const matchesDept = department === "All" ? true : student.dept === department;
+  const [editingRoll, setEditingRoll] = useState("");
 
-      return matchesSearch && matchesDept;
+  useEffect(() => {
+    if (role !== "admin") {
+      navigate("/", { replace: true });
+      return;
+    }
+    loadStudents();
+  }, [role, navigate]);
+
+  async function loadStudents() {
+    try {
+      setLoading(true);
+      const data = await getJson("/jsp/listStudents.jsp");
+      if (data.ok) {
+        setStudents(data.items || []);
+      } else {
+        setMessage(data.message || "Failed to load students");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage("Failed to load students");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleChange(e) {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  }
+
+  function resetForm() {
+    setForm({
+      roll_number: "",
+      name: "",
+      department: "",
+      year: "",
+      email: "",
     });
-  }, [search, department]);
+    setEditingRoll("");
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setMessage("");
+
+    try {
+      let data;
+
+      if (editingRoll) {
+        data = await postForm("/jsp/updateStudent.jsp", form);
+      } else {
+        data = await postForm("/jsp/addStudent.jsp", form);
+      }
+
+      if (data.ok) {
+        setMessage(data.message || "Success");
+        resetForm();
+        loadStudents();
+      } else {
+        setMessage(data.message || "Operation failed");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage("Server error");
+    }
+  }
+
+  function handleEdit(student) {
+    setForm({
+      roll_number: student.roll_number,
+      name: student.name,
+      department: student.department,
+      year: String(student.year),
+      email: student.email || "",
+    });
+    setEditingRoll(student.roll_number);
+  }
+
+  async function handleDelete(rollNumber) {
+    const yes = window.confirm(`Delete student ${rollNumber}?`);
+    if (!yes) return;
+
+    try {
+      const data = await postForm("/jsp/deleteStudent.jsp", {
+        roll_number: rollNumber,
+      });
+
+      if (data.ok) {
+        setMessage(data.message || "Deleted successfully");
+        loadStudents();
+      } else {
+        setMessage(data.message || "Delete failed");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage("Server error");
+    }
+  }
 
   return (
-    <div className="fpLayout">
+    <div className="dbLayout">
       <Sidebar active="Students" role="admin" />
-      <div className="fpMain">
+
+      <div className="dbMain">
         <Topbar userName={userName} role="Admin" />
 
-        <div className="fpContent">
-          <div className="fpHeader">
+        <div className="dbContent">
+          <div className="dbHeader">
             <div>
-              <h2 className="fpTitle">Student Management</h2>
-              <p className="fpSub">Add, update, search, and monitor student records.</p>
-            </div>
-
-            <div className="fpActions">
-              <input
-                className="fpInput"
-                type="text"
-                placeholder="Search by name or roll no..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-
-              <select
-                className="fpSelect"
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-              >
-                <option value="All">All Departments</option>
-                <option value="CSE">CSE</option>
-                <option value="ECE">ECE</option>
-                <option value="MECH">MECH</option>
-              </select>
-
-              <button
-                className="fpBtn"
-                onClick={() => alert("Add Student form can be connected later")}
-              >
-                + Add Student
-              </button>
+              <div className="dbWelcome">Manage Students</div>
+              <div className="dbSub">
+                Add, update, and delete student records
+              </div>
             </div>
           </div>
 
-          <div className="fpStats">
-            <StatCard label="Total Students" value="1248" badge="Active" sub="Institution" progress={90} />
-            <StatCard label="Departments" value="8" badge="Running" sub="Academic" progress={70} />
-            <StatCard label="New Admissions" value="86" badge="This Month" sub="Recent" progress={55} />
-          </div>
-
-          <div className="fpGrid">
-            <div className="fpCard">
-              <div className="fpCardHead">
-                <h3>Students Table</h3>
-                <span className="fpSmall">{filteredStudents.length} records</span>
+          <div className="dbGridBottom" style={{ gridTemplateColumns: "1fr" }}>
+            <div className="dbCard">
+              <div className="dbCardHead">
+                <h3>{editingRoll ? "Edit Student" : "Add Student"}</h3>
               </div>
 
-              <div className="fpTableWrap">
-                <table className="fpTable">
-                  <thead>
-                    <tr>
-                      <th>Roll No</th>
-                      <th>Name</th>
-                      <th>Department</th>
-                      <th>Year</th>
-                      <th>Status</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
+              {message ? (
+                <div style={{ marginBottom: "16px", fontWeight: 500 }}>
+                  {message}
+                </div>
+              ) : null}
 
-                  <tbody>
-                    {filteredStudents.map((student) => (
-                      <tr key={student.id}>
-                        <td className="fpMono">{student.roll}</td>
-                        <td className="fpStrong">{student.name}</td>
-                        <td>{student.dept}</td>
-                        <td>{student.year}</td>
-                        <td>
-                          <span className={`fpBadge ${student.status === "Active" ? "good" : "low"}`}>
-                            {student.status}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            className="fpOutlineBtn"
-                            onClick={() => alert(`Edit ${student.name}`)}
-                          >
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+              <form onSubmit={handleSubmit}>
+                <div style={{ display: "grid", gap: "12px" }}>
+                  <input
+                    type="text"
+                    name="roll_number"
+                    placeholder="Roll Number"
+                    value={form.roll_number}
+                    onChange={handleChange}
+                    required
+                    disabled={!!editingRoll}
+                    style={{ padding: "12px", borderRadius: "10px", border: "1px solid #ccc" }}
+                  />
 
-                    {filteredStudents.length === 0 && (
+                  <input
+                    type="text"
+                    name="name"
+                    placeholder="Name"
+                    value={form.name}
+                    onChange={handleChange}
+                    required
+                    style={{ padding: "12px", borderRadius: "10px", border: "1px solid #ccc" }}
+                  />
+
+                  <input
+                    type="text"
+                    name="department"
+                    placeholder="Department"
+                    value={form.department}
+                    onChange={handleChange}
+                    required
+                    style={{ padding: "12px", borderRadius: "10px", border: "1px solid #ccc" }}
+                  />
+
+                  <input
+                    type="number"
+                    name="year"
+                    placeholder="Year"
+                    value={form.year}
+                    onChange={handleChange}
+                    required
+                    style={{ padding: "12px", borderRadius: "10px", border: "1px solid #ccc" }}
+                  />
+
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Email"
+                    value={form.email}
+                    onChange={handleChange}
+                    style={{ padding: "12px", borderRadius: "10px", border: "1px solid #ccc" }}
+                  />
+
+                  <div style={{ display: "flex", gap: "12px" }}>
+                    <button
+                      type="submit"
+                      style={{
+                        padding: "12px 18px",
+                        border: "none",
+                        borderRadius: "10px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {editingRoll ? "Update Student" : "Add Student"}
+                    </button>
+
+                    {editingRoll ? (
+                      <button
+                        type="button"
+                        onClick={resetForm}
+                        style={{
+                          padding: "12px 18px",
+                          border: "none",
+                          borderRadius: "10px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <div className="dbCard">
+              <div className="dbCardHead">
+                <h3>Student Records</h3>
+              </div>
+
+              {loading ? (
+                <p>Loading students...</p>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                    }}
+                  >
+                    <thead>
                       <tr>
-                        <td colSpan="6" className="fpEmpty">No student records found.</td>
+                        <th style={thStyle}>Roll Number</th>
+                        <th style={thStyle}>Name</th>
+                        <th style={thStyle}>Department</th>
+                        <th style={thStyle}>Year</th>
+                        <th style={thStyle}>Email</th>
+                        <th style={thStyle}>Actions</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="fpSideCard">
-              <h3>Admin Actions</h3>
-              <div className="fpList" style={{ marginTop: 14 }}>
-                <div className="fpItem">
-                  <div className="fpItemTitle">Create Student Account</div>
-                  <div className="fpItemSub">Register a new student profile in the portal.</div>
+                    </thead>
+                    <tbody>
+                      {students.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" style={tdStyle}>
+                            No students found
+                          </td>
+                        </tr>
+                      ) : (
+                        students.map((student) => (
+                          <tr key={student.roll_number}>
+                            <td style={tdStyle}>{student.roll_number}</td>
+                            <td style={tdStyle}>{student.name}</td>
+                            <td style={tdStyle}>{student.department}</td>
+                            <td style={tdStyle}>{student.year}</td>
+                            <td style={tdStyle}>{student.email}</td>
+                            <td style={tdStyle}>
+                              <button
+                                onClick={() => handleEdit(student)}
+                                style={actionBtnStyle}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDelete(student.roll_number)}
+                                style={{ ...actionBtnStyle, marginLeft: "8px" }}
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="fpItem">
-                  <div className="fpItemTitle">Update Academic Info</div>
-                  <div className="fpItemSub">Modify branch, year, or section details.</div>
-                </div>
-                <div className="fpItem">
-                  <div className="fpItemTitle">Deactivate Account</div>
-                  <div className="fpItemSub">Disable inactive or withdrawn students.</div>
-                </div>
-              </div>
-
-              <div className="fpActionRow">
-                <button className="fpOutlineBtn" onClick={() => alert("Bulk import can be linked later")}>
-                  Import List
-                </button>
-                <button className="fpBtn" onClick={() => alert("Export list can be linked later")}>
-                  Export List
-                </button>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -162,3 +303,21 @@ export default function AdminStudents() {
     </div>
   );
 }
+
+const thStyle = {
+  textAlign: "left",
+  padding: "12px",
+  borderBottom: "1px solid #ddd",
+};
+
+const tdStyle = {
+  padding: "12px",
+  borderBottom: "1px solid #eee",
+};
+
+const actionBtnStyle = {
+  padding: "8px 12px",
+  border: "none",
+  borderRadius: "8px",
+  cursor: "pointer",
+};
